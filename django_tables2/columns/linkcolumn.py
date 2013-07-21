@@ -95,13 +95,14 @@ class LinkColumn(BaseLinkColumn):
     - *a* -- ``<a>`` elements in ``<td>``.
     """
     def __init__(self, viewname, urlconf=None, args=None, kwargs=None,
-                 current_app=None, attrs=None, **extra):
+                 current_app=None, attrs=None, text=None, **extra):
         super(LinkColumn, self).__init__(attrs, **extra)
         self.viewname = viewname
         self.urlconf = urlconf
         self.args = args
         self.kwargs = kwargs
         self.current_app = current_app
+        self.text = text
 
     def render(self, value, record, bound_column):  # pylint: disable=W0221
         viewname = (self.viewname.resolve(record)
@@ -129,4 +130,6 @@ class LinkColumn(BaseLinkColumn):
             params['current_app'] = (self.current_app.resolve(record)
                                      if isinstance(self.current_app, A)
                                      else self.current_app)
-        return self.render_link(reverse(viewname, **params), text=value)
+        # If text is specified, use that instead of the value
+        text = self.text or value
+        return self.render_link(reverse(viewname, **params), text=text)

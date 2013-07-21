@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from django.db import models
 from .base import library
-from .templatecolumn import TemplateColumn
+from .templatecolumn import TemplateColumn, GTemplateColumn
 from django.conf import settings
 
 @library.register
@@ -25,3 +25,11 @@ class TimeColumn(TemplateColumn):
     def from_field(cls, field):
         if isinstance(field, models.TimeField):
             return cls(verbose_name=field.verbose_name)
+
+class GTimeColumn(GTemplateColumn, TimeColumn):
+    def __init__(self, format=None, *args, **kwargs):
+        if format is None:
+            format = settings.TIME_FORMAT
+        template = ('{% python from django_tables2.utils import date_format %}'+
+                    '${time_format(value, "%s") if value else default}' % format)
+        GTemplateColumn.__init__(self, template_code=template, *args, **kwargs)

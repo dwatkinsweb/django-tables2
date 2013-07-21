@@ -39,7 +39,7 @@ class CheckBoxColumn(Column):
     - *th__input* -- Replaces *input* attrs in header cells.
     - *td__input* -- Replaces *input* attrs in body cells.
     """
-    def __init__(self, attrs=None, **extra):
+    def __init__(self, attrs=None, header_check=True, **extra):
         # For backwards compatibility, passing in a normal dict effectively
         # should assign attributes to the `<input>` tag.
         valid = set(("input", "th__input", "td__input", "th", "td", "cell"))
@@ -60,15 +60,19 @@ class CheckBoxColumn(Column):
 
         kwargs = {'orderable': False, 'attrs': attrs}
         kwargs.update(extra)
+        self.header_check = header_check
         super(CheckBoxColumn, self).__init__(**kwargs)
 
     @property
     def header(self):
-        default = {'type': 'checkbox'}
-        general = self.attrs.get('input')
-        specific = self.attrs.get('th__input')
-        attrs = AttributeDict(default, **(specific or general or {}))
-        return mark_safe('<input %s/>' % attrs.as_html())
+        if self.header_check:
+            default = {'type': 'checkbox'}
+            general = self.attrs.get('input')
+            specific = self.attrs.get('th__input')
+            attrs = AttributeDict(default, **(specific or general or {}))
+            return mark_safe('<input %s/>' % attrs.as_html())
+        else:
+            return super(CheckBoxColumn, self).header
 
     def render(self, value, bound_column):  # pylint: disable=W0221
         default = {

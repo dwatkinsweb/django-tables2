@@ -3,8 +3,10 @@ from __future__ import absolute_import, unicode_literals
 from django.db.models.fields import FieldDoesNotExist
 from django.utils.datastructures import SortedDict
 from django.utils.safestring import SafeData
+from django.core.urlresolvers import reverse
 from django_tables2.templatetags.django_tables2 import title
 from django_tables2.utils import A, AttributeDict, OrderBy, OrderByTuple
+from django_tables2 import const as C
 from itertools import islice
 import six
 import warnings
@@ -284,6 +286,16 @@ class BoundColumn(object):
         self.table = table
         self.column = column
         self.name = name
+    
+    def get_sort_url(self):
+        #TODO: Allow for multiple column sortings
+        if self.table.view_name is None:
+            raise Exception('view_name must be set in Table.Meta to use url methods')
+        if self.table.request_kwargs is None:
+            raise Exception('request_kwargs must be sent to Table.__init__ to use url methods')
+        url_kwargs = {k:v for k,v in self.table.request_kwargs.items() if v is not None}
+        url_kwargs[self.table.prefixed_order_by_field] = self.order_by_alias.next
+        return reverse(self.table.view_name, kwargs=url_kwargs)
 
     def __unicode__(self):
         return six.text_type(self.header)
@@ -312,9 +324,11 @@ class BoundColumn(object):
         # explicitly specified).
         attrs["td"] = td = AttributeDict(attrs.get('td', attrs.get('cell', {})))
         attrs["th"] = th = AttributeDict(attrs.get("th", attrs.get("cell", {})))
+        attrs["col"] = col = AttributeDict(attrs.get('col', attrs.get('cell', {})))
         # make set of existing classes.
         th_class = set((c for c in th.get("class", "").split(" ") if c))  # pylint: disable=C0103
         td_class = set((c for c in td.get("class", "").split(" ") if c))  # pylint: disable=C0103
+        col_class = set((c for c in td.get("class", "").split(" ") if c))  # pylint: disable=C0103
         # add classes for ordering
         if self.orderable:
             th_class.add("orderable")
@@ -324,10 +338,13 @@ class BoundColumn(object):
         # Always add the column name as a class
         th_class.add(self.name)
         td_class.add(self.name)
+        col_class.add(self.name)
         if th_class:
             th['class'] = " ".join(sorted(th_class))
         if td_class:
             td['class'] = " ".join(sorted(td_class))
+        if col_class:
+            col['class'] = " ".join(sorted(col_class))
         return attrs
 
     @property

@@ -2,8 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from django.db import models
 from .base import library
-from .templatecolumn import TemplateColumn
-
+from .templatecolumn import TemplateColumn, GTemplateColumn
 
 @library.register
 class DateColumn(TemplateColumn):
@@ -27,3 +26,11 @@ class DateColumn(TemplateColumn):
     def from_field(cls, field):
         if isinstance(field, models.DateField):
             return cls(verbose_name=field.verbose_name)
+
+class GDateColumn(GTemplateColumn, DateColumn):
+    def __init__(self, format=None, short=True, *args, **kwargs):
+        if format is None:
+            format = 'SHORT_DATETIME_FORMAT' if short else 'DATETIME_FORMAT'
+        template = ('{% python from django_tables2.utils import date_format %}'+
+                    '${date_format(value, "%s") if value else default}' % format)
+        GTemplateColumn.__init__(self, template_code=template, *args, **kwargs)

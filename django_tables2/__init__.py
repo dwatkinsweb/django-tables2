@@ -1,9 +1,9 @@
 # coding: utf-8
 # pylint: disable=W0611
-from .tables  import Table
-from .columns import (BooleanColumn, Column, CheckBoxColumn, DateColumn,
-                      DateTimeColumn, EmailColumn, FileColumn, LinkColumn,
-                      TemplateColumn, URLColumn, TimeColumn)
+from .tables  import Table, GTable
+from .columns import (BooleanColumn, GBooleanColumn, Column, CheckBoxColumn, DateColumn, GDateColumn,
+                      DateTimeColumn, GDateTimeColumn, EmailColumn, FileColumn, LinkColumn,
+                      TemplateColumn, GTemplateColumn, URLColumn, TimeColumn, GTimeColumn)
 from .config  import RequestConfig
 from .utils   import A, Attrs
 try:

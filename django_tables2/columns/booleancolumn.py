@@ -47,3 +47,13 @@ class BooleanColumn(Column):
             return cls(verbose_name=field.verbose_name, null=False)
         if isinstance(field, models.NullBooleanField):
             return cls(verbose_name=field.verbose_name, null=True)
+
+class GBooleanColumn(BooleanColumn):
+    def render(self, value):
+        from genshi import Markup
+        value = bool(value)
+        text = self.yesno[int(not value)]
+        html = '<span %s></span>'
+        attrs = {"class": six.text_type(value).lower()}
+        attrs.update(self.attrs.get("span", {}))
+        return Markup(html % (AttributeDict(attrs).as_html()))

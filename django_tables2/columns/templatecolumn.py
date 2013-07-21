@@ -63,3 +63,21 @@ class TemplateColumn(Column):
                 return render_to_string(self.template_name, context)
         finally:
             context.pop()
+
+class GTemplateColumn(TemplateColumn):
+    """ Sames as base TemplateColumn with Genshi Support """
+    def render(self, record, table, value, bound_column, **kwargs):
+        from django_genshi import render_to_stream
+        from django_genshi import Context as GContext
+        from genshi.template import NewTextTemplate as GTemplate
+        context = getattr(table, 'context', GContext())
+        context.update({'default': bound_column.default,
+                        'record': record, 'value': value})
+        try:
+            if self.template_code:
+                return GTemplate(self.template_code).generate(**context)
+            else:
+                return render_to_stream(self.template_name, context)
+        finally:
+            context.pop()
+        

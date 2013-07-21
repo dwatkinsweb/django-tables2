@@ -11,12 +11,11 @@ from django.db.models.fields     import FieldDoesNotExist
 from django.utils.datastructures import SortedDict
 from django.template             import RequestContext
 from django.template.loader      import get_template
+from django.core.urlresolvers    import reverse
 import six
 import warnings
 
-
 QUERYSET_ACCESSOR_SEPARATOR = '__'
-
 
 class TableData(object):
     """
@@ -140,7 +139,6 @@ class TableData(object):
             return self.queryset.model._meta.verbose_name_plural
         return getattr(self.list, "verbose_name_plural", "items")
 
-
 class DeclarativeColumnsMetaclass(type):
     """
     Metaclass that converts `.Column` objects defined on a class to the
@@ -216,7 +214,6 @@ class DeclarativeColumnsMetaclass(type):
 
         return super(DeclarativeColumnsMetaclass, mcs).__new__(mcs, name, bases, attrs)
 
-
 class TableOptions(object):
     """
     Extracts and exposes options for a `.Table` from a `.Table.Meta`
@@ -230,7 +227,7 @@ class TableOptions(object):
     def __init__(self, options=None):
         super(TableOptions, self).__init__()
         self.attrs = AttributeDict(getattr(options, "attrs", {}))
-        self.default = getattr(options, "default", "—")
+        self.default = getattr(options, "default", "-")
         self.empty_text = getattr(options, "empty_text", None)
         self.fields = getattr(options, "fields", ())
         self.exclude = getattr(options, "exclude", ())
@@ -252,7 +249,10 @@ class TableOptions(object):
         self.template = getattr(options, "template", "django_tables2/table.html")
         self.localize = getattr(options, "localize", ())
         self.unlocalize = getattr(options, "unlocalize", ())
-
+        self.view_name = getattr(options, "view_name", None)
+        self.sort_order_key = getattr(options, "sort_order_key", None)
+        self.sort_column_key = getattr(options, "sort_column_key", None)
+        self.page_key = getattr(options, "page_key", None)
 
 class TableBase(object):
     """
@@ -378,10 +378,9 @@ class TableBase(object):
     """
     TableDataClass = TableData
 
-    def __init__(self, data, order_by=None, orderable=None, empty_text=None,
-                 exclude=None, attrs=None, sequence=None, prefix=None,
-                 order_by_field=None, page_field=None, per_page_field=None,
-                 template=None, sortable=None, default=None, request=None):
+    def __init__(self, data, order_by=None, orderable=None, empty_text=None, exclude=None, attrs=None, sequence=None, 
+                 prefix=None, order_by_field=None, page_field=None, per_page_field=None, template=None, sortable=None, 
+                 default=None, request=None, request_kwargs=None):
         super(TableBase, self).__init__()
         self.exclude = exclude or ()
         self.sequence = sequence
@@ -436,6 +435,9 @@ class TableBase(object):
         else:
             self.order_by = order_by
         self.template = template
+        self.view_name = self._meta.view_name
+        self.request = request
+        self.request_kwargs = request_kwargs
         # If a request is passed, configure for request
         if request:
             RequestConfig(request).configure(self)
@@ -451,6 +453,25 @@ class TableBase(object):
         template = get_template(self.template)
         request = build_request()
         return template.render(RequestContext(request, {'table': self}))
+
+    def get_page_url(self, page_number):
+        url_kwargs = {k:v for k,v in self.request_kwargs.items() if v is not None}
+        url_kwargs[self.prefixed_page_field] = page_number
+        return reverse(self.view_name, kwargs=url_kwargs)
+
+    def get_previous_page_url(self):
+        if self.view_name is None:
+            raise Exception('view_name must be set in Table.Meta to use url methods')
+        if self.request_kwargs is None:
+            raise Exception('request_kwargs must be sent to __init__ to use url methods')
+        return self.get_page_url(self.page.number - 1)
+        
+    def get_next_page_url(self):
+        if self.view_name is None:
+            raise Exception('view_name must be set in Table.Meta to use url methods')
+        if self.request_kwargs is None:
+            raise Exception('request_kwargs must be sent to __init__ to use url methods')
+        return self.get_page_url(self.page.number + 1)
 
     @property
     def attrs(self):
@@ -604,5 +625,22 @@ class TableBase(object):
     def template(self, value):
         self._template = value
 
+    @property
+    def view_name(self):
+        return (self._view_name if self._view_name is not None
+                               else self._meta.view_name)
+
+    @view_name.setter
+    def view_name(self, value):
+        self._view_name = value
+
 # Python 2/3 compatible way to enable the metaclass
+
+class GTableBase(TableBase):
+    """ Sames as basic table but adds support for Genshi """
+    def render(self):
+        from django_genshi import render_to_stream
+        return render_to_stream(self.template, {'table': self}).render()
+
 Table = DeclarativeColumnsMetaclass(str('Table'), (TableBase, ), {})
+GTable = DeclarativeColumnsMetaclass(str('Table'), (GTableBase, ), {})

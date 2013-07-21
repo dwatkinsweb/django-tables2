@@ -3,7 +3,10 @@ from __future__ import absolute_import, unicode_literals
 from django.core.handlers.wsgi import WSGIRequest
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+from django.utils import formats
+from django.utils.dateformat import format as dateformat
 from django.test.client import FakePayload
+from django.conf import settings
 from itertools import chain
 import inspect
 import six
@@ -551,3 +554,17 @@ def total_ordering(cls):
             opfunc.__doc__ = getattr(int, opname).__doc__
             setattr(cls, opname, opfunc)
     return cls
+
+def date_format(value, date_format):
+    if not value:
+        return u''
+    if date_format is None:
+        date_format = settings.DATE_FORMAT
+    try:
+        return formats.date_format(value, date_format)
+    except AttributeError:
+        try:
+            return dateformat(value, date_format)
+        except AttributeError:
+            return ''
+    

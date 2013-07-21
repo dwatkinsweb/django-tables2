@@ -28,12 +28,18 @@ class RequestConfig(object):
     def __init__(self, request, paginate=True):
         self.request = request
         self.paginate = paginate
+    
+    def get_order_by(self, table):
+        if hasattr(table, 'get_order_by'):
+            return table.get_order_by()
+        else:
+            return self.request.GET.getlist(table.prefixed_order_by_field)
 
     def configure(self, table):
         """
         Configure a table using information from the request.
         """
-        order_by = self.request.GET.getlist(table.prefixed_order_by_field)
+        order_by = self.get_order_by(table)
         if order_by:
             table.order_by = order_by
         if self.paginate:
